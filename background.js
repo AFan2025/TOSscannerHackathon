@@ -3,7 +3,7 @@
 
 class TOSBackground {
     constructor() {
-        this.djangoBackendUrl = 'http://localhost:8000/api'; // Update this to your Django backend URL
+        this.djangoBackendUrl = 'http://192.168.3.180:8080/api/analyze/'; // Update this to your Django backend URL
         this.init();
     }
     
