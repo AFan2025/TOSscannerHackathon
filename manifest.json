@@ -10,7 +10,8 @@
     "scripting",
     "tabs",
     "sidePanel",
-    "alarms"
+    "alarms",
+    "contextMenus"
   ],
   
   "host_permissions": [

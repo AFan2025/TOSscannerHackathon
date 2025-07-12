@@ -10,7 +10,7 @@ class TOSPopup {
         document.addEventListener('DOMContentLoaded', () => {
             this.setupEventListeners();
             this.loadCurrentSite();
-            this.checkBackendConnection();
+            // this.checkBackendConnection();
             this.loadCachedResults();
         });
     }
@@ -128,7 +128,7 @@ class TOSPopup {
                 timestamp: new Date().toISOString()
             };
             
-            const response = await fetch(`${this.djangoBackendUrl}/scan-results/`, {
+            const response = await fetch(`${this.djangoBackendUrl}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -149,23 +149,23 @@ class TOSPopup {
     }
     
     // Check if Django backend is available
-    async checkBackendConnection() {
-        try {
-            const response = await fetch(`${this.djangoBackendUrl}/health/`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
+    // async checkBackendConnection() {
+    //     try {
+    //         const response = await fetch(`${this.djangoBackendUrl}/health/`, {
+    //             method: 'GET',
+    //             headers: { 'Content-Type': 'application/json' }
+    //         });
             
-            if (response.ok) {
-                this.updateBackendStatus('Connected ✅', 'found');
-            } else {
-                throw new Error('Backend not responding');
-            }
-        } catch (error) {
-            this.updateBackendStatus('Disconnected ❌', 'warning');
-            console.log('Backend not available - results will be stored locally');
-        }
-    }
+    //         if (response.ok) {
+    //             this.updateBackendStatus('Connected ✅', 'found');
+    //         } else {
+    //             throw new Error('Backend not responding');
+    //         }
+    //     } catch (error) {
+    //         this.updateBackendStatus('Disconnected ❌', 'warning');
+    //         console.log('Backend not available - results will be stored locally');
+    //     }
+    // }
     
     // Update backend connection status in UI
     updateBackendStatus(message, type = '') {
