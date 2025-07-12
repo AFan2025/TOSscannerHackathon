@@ -12,7 +12,8 @@ class TOSScanner {
         this.privacyTerms = [
             'privacy policy', 'privacy notice', 'privacy statement', 'data policy',
             'cookie policy', 'privacy practices', 'data protection', 'privacy & cookies',
-            'privacy', 'data usage', 'information collection', 'data security'
+            'privacy', 'data usage', 'information collection', 'data security', 'cookies',
+            'information usage', 'data collection', 'user privacy', 'privacy practices'
         ];
         
         this.foundLinks = [];
