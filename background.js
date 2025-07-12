@@ -3,7 +3,7 @@
 
 class TOSBackground {
     constructor() {
-        this.djangoBackendUrl = 'http://192.168.3.180:8080/api/analyze/'; // Update this to your Django backend URL
+        this.djangoBackendUrl = 'http://192.168.3.180:8080/api'; // Update this to your Django backend URL
         this.init();
     }
     
@@ -171,7 +171,7 @@ class TOSBackground {
                 user_agent: navigator.userAgent
             };
             
-            const response = await fetch(`${this.djangoBackendUrl}/scan-results/`, {
+            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ class TOSBackground {
                 timestamp: new Date().toISOString()
             };
             
-            const response = await fetch(`${this.djangoBackendUrl}/analyze-link/`, {
+            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -283,7 +283,7 @@ class TOSBackground {
                 .map(([key, value]) => value);
             
             if (scanData.length > 0) {
-                const response = await fetch(`${this.djangoBackendUrl}/batch-scan-results/`, {
+                const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -173,7 +173,7 @@ class TOSScanner {
             
             return {
                 title: doc.title || '',
-                content: mainContent.textContent.trim(),
+                tos_text: mainContent.textContent.trim(),
                 url: url
             };
         } catch (error) {

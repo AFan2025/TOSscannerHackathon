@@ -2,7 +2,7 @@
 
 class TOSPopup {
     constructor() {
-        this.djangoBackendUrl = 'http://192.168.3.180:8080/api/analyze/'; 
+        this.djangoBackendUrl = 'http://192.168.3.180:8080/api'; 
         this.init();
     }
     
@@ -233,7 +233,7 @@ class TOSPopup {
     async getAnalysisResults(domain) {
         try {
             // const response = await fetch(`${this.djangoBackendUrl}/analysis/${domain}/`, {
-            const response = await fetch(`${this.djangoBackendUrl}/`, {
+            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -327,9 +327,21 @@ class TOSPopup {
         const analyzeBtn = document.getElementById('analyze-selected-btn');
         const results = document.getElementById('results');
         
+        console.log(`🎯 Starting analysis of ${selectedCheckboxes.length} selected links`);
+        
         if (selectedCheckboxes.length === 0) {
+            console.log('⚠️ No links selected for analysis');
             return;
         }
+        
+        // Log selected links
+        selectedCheckboxes.forEach((checkbox, index) => {
+            console.log(`📝 Selected link ${index + 1}:`, {
+                url: checkbox.dataset.url,
+                text: checkbox.dataset.text,
+                type: checkbox.dataset.type
+            });
+        });
         
         // Show loading state
         analyzeBtn.disabled = true;
@@ -356,6 +368,8 @@ class TOSPopup {
                 const linkText = checkbox.dataset.text;
                 const linkType = checkbox.dataset.type;
                 
+                console.log(`🔄 Processing link ${i + 1}/${selectedCheckboxes.length}:`, linkUrl);
+                
                 progressDiv.innerHTML = `
                     <div class="analysis-progress">
                         <div class="spinner"></div>
@@ -364,19 +378,30 @@ class TOSPopup {
                 `;
                 
                 try {
+                    console.log(`📥 Fetching content for: ${linkText}`);
                     // Fetch and analyze the TOS content
                     const tosContent = await this.fetchToSContent(linkUrl);
                     if (tosContent) {
+                        console.log(`✅ Content fetched successfully, analyzing with backend...`);
                         const analysis = await this.analyzeToSContent(tosContent);
+                        console.log(`🎉 Analysis completed for: ${linkText}`);
                         analysisResults.push({
                             url: linkUrl,
                             text: linkText,
                             type: linkType,
                             analysis: analysis
                         });
+                    } else {
+                        console.log(`❌ Failed to fetch content for: ${linkUrl}`);
+                        analysisResults.push({
+                            url: linkUrl,
+                            text: linkText,
+                            type: linkType,
+                            error: 'Failed to fetch content'
+                        });
                     }
                 } catch (error) {
-                    console.error(`Error analyzing ${linkUrl}:`, error);
+                    console.error(`💥 Error analyzing ${linkUrl}:`, error);
                     analysisResults.push({
                         url: linkUrl,
                         text: linkText,
@@ -389,42 +414,76 @@ class TOSPopup {
             // Remove progress indicator
             progressDiv.remove();
             
+            console.log(`🏁 Analysis completed for all ${selectedCheckboxes.length} links`);
+            console.log('📊 Analysis summary:', analysisResults.map(r => ({
+                url: r.url,
+                hasAnalysis: !!r.analysis,
+                hasError: !!r.error,
+                errorMessage: r.error
+            })));
+            
             // Display analysis results
             this.displayAnalysisResults(analysisResults);
             
         } catch (error) {
-            console.error('Error in analysis:', error);
+            console.error('💥 Error in analysis process:', error);
             results.innerHTML += `<div class="result-item warning">Analysis failed: ${error.message}</div>`;
         } finally {
             // Reset button state
             analyzeBtn.disabled = false;
             this.updateAnalyzeButton();
+            console.log('🔄 Analysis process finished, button state reset');
         }
     }
     
     // Fetch TOS content from URL
     async fetchToSContent(url) {
         try {
+            console.log(`🔍 Starting to fetch TOS content from: ${url}`);
             const response = await fetch(url);
+            
             if (response.ok) {
+                console.log(`✅ Successfully fetched response from ${url}`);
+                console.log(`📊 Response status: ${response.status}`);
+                console.log(`📋 Content-Type: ${response.headers.get('content-type')}`);
+                
                 const html = await response.text();
+                console.log(`📄 Raw HTML length: ${html.length} characters`);
                 
                 // Create a temporary DOM to extract text content
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
+                console.log('📝 HTML parsed into DOM');
+                console.log('🏗️ Document title:', doc.title);
                 
                 // Remove script and style elements
                 const scripts = doc.querySelectorAll('script, style');
+                console.log(`🗑️ Removing ${scripts.length} script/style elements`);
                 scripts.forEach(el => el.remove());
                 
                 // Get text content
                 const textContent = doc.body.textContent || doc.body.innerText || '';
+                console.log(`📝 Extracted text content length: ${textContent.length} characters`);
+                
+                // Show first 500 characters for debugging
+                const preview = textContent.substring(0, 500).replace(/\s+/g, ' ').trim();
+                console.log(`📖 Content preview (first 500 chars): "${preview}..."`);
                 
                 // Limit content length (backend might have limits)
-                return textContent.substring(0, 50000); // First 50k characters
+                const finalContent = textContent.substring(0, 50000);
+                console.log(`✂️ Final content length after truncation: ${finalContent.length} characters`);
+                
+                return finalContent;
+            } else {
+                console.error(`❌ Failed to fetch ${url}. Status: ${response.status} ${response.statusText}`);
             }
         } catch (error) {
-            console.error('Error fetching TOS content:', error);
+            console.error('💥 Error fetching TOS content:', error);
+            console.error('🔍 Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
         }
         return null;
     }
@@ -432,11 +491,20 @@ class TOSPopup {
     // Send TOS content to backend for analysis
     async analyzeToSContent(tosText) {
         try {
+            console.log(`🚀 Preparing to send content to backend: ${this.djangoBackendUrl}/analyze/`);
+            console.log(`📏 Content length being sent: ${tosText.length} characters`);
+            
+            // Show first 200 characters of what we're sending
+            const preview = tosText.substring(0, 200).replace(/\s+/g, ' ').trim();
+            console.log(`📤 Sending content preview: "${preview}..."`);
+            
             const payload = {
                 tos_text: tosText
             };
             
-            const response = await fetch(`${this.djangoBackendUrl}/analyze`, {
+            console.log(`📦 Payload size: ${JSON.stringify(payload).length} bytes`);
+            
+            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -444,21 +512,43 @@ class TOSPopup {
                 body: JSON.stringify(payload)
             });
             
+            console.log(`📡 Backend response status: ${response.status} ${response.statusText}`);
+            
             if (response.ok) {
                 const result = await response.json();
-                console.log('Successfully analyzed with backend:', result);
+                console.log('✅ Successfully analyzed with backend:');
+                console.log('📊 Analysis result:', result);
+                
+                // Log specific parts of the analysis
+                if (result.summary) {
+                    console.log('📝 Summary:', result.summary);
+                }
+                if (result.key_clauses) {
+                    console.log(`🔑 Found ${result.key_clauses.length} key clauses:`, result.key_clauses);
+                }
+                
                 return result;
             } else {
+                const errorText = await response.text();
+                console.error(`❌ Backend error response: ${errorText}`);
                 throw new Error(`Backend responded with status: ${response.status}`);
             }
         } catch (error) {
-            console.error('Error sending to backend:', error);
+            console.error('💥 Error sending to backend:', error);
+            console.error('🔍 Error details:', {
+                name: error.name,
+                message: error.message,
+                url: this.djangoBackendUrl
+            });
             throw error;
         }
     }
     
     // Display analysis results
     displayAnalysisResults(analysisResults) {
+        console.log('🎨 Displaying analysis results in UI');
+        console.log(`📋 Total results to display: ${analysisResults.length}`);
+        
         const results = document.getElementById('results');
         
         let analysisHtml = '<div class="result-item found"><strong>📊 Analysis Results:</strong></div>';
@@ -466,7 +556,15 @@ class TOSPopup {
         analysisResults.forEach((result, index) => {
             const emoji = result.type === 'tos' ? '📄' : '🔒';
             
+            console.log(`🖼️ Rendering result ${index + 1}:`, {
+                url: result.url,
+                text: result.text,
+                hasError: !!result.error,
+                hasAnalysis: !!result.analysis
+            });
+            
             if (result.error) {
+                console.log(`❌ Rendering error result for: ${result.text}`);
                 analysisHtml += `
                     <div class="result-item warning">
                         ${emoji} <strong>Error analyzing:</strong> ${result.text}<br>
@@ -474,6 +572,13 @@ class TOSPopup {
                     </div>
                 `;
             } else if (result.analysis) {
+                console.log(`✅ Rendering successful analysis for: ${result.text}`);
+                console.log('📄 Analysis content preview:', {
+                    hasSummary: !!result.analysis.summary,
+                    summaryLength: result.analysis.summary ? result.analysis.summary.length : 0,
+                    keyClausesCount: result.analysis.key_clauses ? result.analysis.key_clauses.length : 0
+                });
+                
                 analysisHtml += `
                     <div class="result-item found analysis-result">
                         <div class="analysis-header">
@@ -485,13 +590,17 @@ class TOSPopup {
                         </div>
                     </div>
                 `;
+            } else {
+                console.log(`⚠️ Result has neither error nor analysis: ${result.text}`);
             }
         });
         
+        console.log('🎨 Adding analysis HTML to results container');
         results.innerHTML += analysisHtml;
         
         // Set up toggle buttons for analysis details
         this.setupAnalysisToggle();
+        console.log('🔧 Analysis toggle buttons setup complete');
     }
     
     // Format analysis result for display
