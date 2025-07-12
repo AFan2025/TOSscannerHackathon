@@ -1,0 +1,172 @@
+{
+  "clause_categories": [
+    {
+      "category_name": "Unilateral Contract Changes & Modifications",
+      "description": "Clauses that give the service provider the power to change the terms of the agreement at any time, often without directly notifying the user.",
+      "clauses": [
+        {
+          "clause_name": "Unilateral Variation Terms",
+          "description": "These terms grant one party the unilateral right to vary key terms or the product/service description.",
+          "examples": [
+            "To pay during the term of the Service Agreement all charges for Services rendered by Servcorp to the Client at the rates stipulated by Servcorp from time to time. Servcorp reserves the right to change, review or vary the Services charges.",
+            "JJR may adjust its prices during the term of the agreement for reasons such as but not limited to increased operation costs, changes in disposal fees, site profitability, changes to disposal facility locations or increased government charges and levies by giving customers 30 days notice of such increase.",
+            "The customer must comply with Fujifilm's “customer expectation documents” which can be amended without notifying the customer, and any reasonable directions issued by Fujifilm from time to time.",
+            "The supplier may amend these terms and prices at any time, for any reason, without providing notice."
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "Limitation of Liability & Disclaimers",
+      "description": "These clauses aim to minimize the company's financial responsibility for any harm or damages you might suffer from using their service.",
+      "clauses": [
+        {
+          "clause_name": "Exclusion of Liability for Negligence",
+          "description": "A clause that attempts to exclude a party’s liability for death or personal injury caused by their negligence. This type of clause is generally considered unfair and is unenforceable under UK law.",
+          "examples": [
+            "A term that seeks to limit your company's liability for personal injury or death it causes.",
+            "A clause stating, 'The company has no responsibility whatsoever in case of injury, death or accident, even if it's due to their staff's negligence while on your premises.’"
+          ]
+        },
+        {
+          "clause_name": "Capping Liability / Token Damages",
+          "description": "These clauses unreasonably limit the amount of compensation payable for a breach of contract or negligence, often to a trivial amount, preventing fair recovery for actual losses.",
+          "examples": [
+            "A term stating that if a company fails to deliver a service as agreed, its 'maximum liability is limited to £1, regardless of your actual losses.'",
+            "A clause where a company whose driver causes £200,000 worth of damage attempts to rely on a term stating that any negligence will only result in compensation of £100.",
+            "A term stating that a company is only liable for '£1 damages upon any breach of contract,' even when the contract is worth £100,000 or more."
+          ]
+        },
+        {
+          "clause_name": "Disclaimer of Warranties",
+          "description": "This type of clause states that a service or product is provided 'as is' and 'at your own risk,' disclaiming all warranties that can legally be disclaimed and placing liability on the user.",
+          "examples": [
+            "Boilerplate language, often in all caps, stating that the service is provided on an 'AS IS' and 'AS AVAILABLE' basis and that use of the site is 'at your own risk.'"
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "Dispute Resolution & Waiver of Rights",
+      "description": "These clauses dictate how legal disputes between you and the company will be handled, often limiting your ability to seek legal recourse.",
+      "clauses": [
+        {
+          "clause_name": "Mandatory Arbitration Clauses",
+          "description": "These clauses, also known as forced arbitration clauses, prevent consumers from taking a company to court. Instead, disputes must be settled through a private arbitration process, which often favors the company.",
+          "examples": [
+            "Amazon's EULA includes a clause stating that users 'agree that any dispute or claim ... will be resolved by binding arbitration, rather than in court.'",
+            "Many telecommunication companies like AT&T and Verizon include forced arbitration clauses in their contracts, preventing customers from suing them in court for disputes over service or billing.",
+            "Nursing home admission agreements can contain forced arbitration clauses that prevent residents or their families from suing for negligence or abuse."
+          ]
+        },
+        {
+          "clause_name": "Class Action Waivers",
+          "description": "This type of clause forces consumers to waive their right to participate in a class-action lawsuit, which is a primary tool for holding corporations accountable for widespread, small-dollar-amount wrongdoing.",
+          "examples": [
+            "Instagram's EULA states that users 'must bring all claims in your individual capacity, and not as a plaintiff or class member in any purported class action, representative proceeding, or private attorney general action.'",
+            "Amazon's dispute resolution clause specifies that 'any dispute resolution proceedings will be conducted only on an individual basis and not in a class, consolidated or representative action.'",
+            "Wells Fargo used class action waivers in its contracts to block customers from suing over the creation of millions of fraudulent accounts."
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "Content Ownership & Licensing",
+      "description": "These clauses can grant the service provider broad rights to the content you create and upload.",
+      "clauses": [
+        {
+          "clause_name": "Broad Content Licenses",
+          "description": "Some platforms include terms that give them a very broad license to use, modify, and even sell the content you post without any compensation to you.",
+          "examples": [
+            "Social media sites claim complete ownership of everything you post to them.",
+            "Twitter's licensing clause, while written in plain language, grants them a broad license to your content.",
+            "Many services reserve the right to use user-generated content in various ways, and it's important to understand the scope of these licenses."
+          ]
+        },
+        {
+          "clause_name": "License Scope and Restrictions",
+          "description": "These clauses define how licensed content can be used, including whether the license is exclusive, where it can be used, and if modifications are allowed.",
+          "examples": [
+            "A content licence agreement should specify if a licence is exclusive, meaning the content cannot be licensed to any other business.",
+            "The license should outline the territory where the other business is allowed to use your content, which for online businesses is often worldwide.",
+            "The agreement should state who will own any alterations to the content; for instance, you may wish to stipulate that you will still own any improvements made by the licensee."
+          ]
+        },
+        {
+          "clause_name": "Content Ownership Clarification",
+          "description": "These clauses are meant to clearly state who retains ownership of content, whether it's the user's uploaded content or the platform's own intellectual property.",
+          "examples": [
+            "Pandora uses a helpful clause to explain what belongs to who and when, clarifying intellectual property ownership.",
+            "A well-drafted intellectual property clause should make it clear who owns the intellectual property, when rights are exchanged, and how to report intellectual property theft.",
+            "Some EULAs, like the one for Far Cry 3: Blood Dragon, include vague restrictions on using the product 'contrary to morality or the laws in force,' which can be difficult to interpret."
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "Automatic Renewals & Unfair Payment Terms",
+      "description": "These clauses can lock you into paying for a service you may no longer want or need.",
+      "clauses": [
+        {
+          "clause_name": "Automatic Renewal Clauses",
+          "description": "These terms automatically renew a contract, often with a short or inconvenient notice period for cancellation, locking the consumer into another term.",
+          "examples": [
+            "A SaaS agreement stating: 'The subscription will automatically renew for successive annual terms unless cancelled by either party at least 60 days before the end of the current term.'",
+            "A one-year contract that states it will automatically renew for additional one-year terms unless notice is given 90 days before the renewal date.",
+            "A membership agreement where after an initial period, the contract automatically continues on a month-to-month basis unless terminated with 30 days' notice."
+          ]
+        },
+        {
+          "clause_name": "Unfair Payment Terms",
+          "description": "These clauses can require payment even if services are not rendered, demand full payment before a contract can be terminated, or impose excessive cancellation fees.",
+          "examples": [
+            "A clause stating that charges will still be rendered if a service cannot be performed due to reasons like holiday closures or lack of access, with credit requests only accepted within 14 days of the invoice date.",
+            "A term requiring that full payment of all outstanding money must be made before the agreement can be terminated.",
+            "A term that allows a business to charge an excessive penalty fee for cancellation, far beyond covering their actual costs and lost profit."
+          ]
+        },
+        {
+          "clause_name": "Payment on Termination by Supplier",
+          "description": "These clauses obligate the customer to pay a significant sum, such as the remaining balance of the contract, if the supplier decides to terminate the agreement.",
+          "examples": [
+            "A term in a Fujifilm contract requiring the customer to pay the unpaid balance of the license fee for the remainder of the term, plus other costs, if Fujifilm terminates the contract.",
+            "A clause that allows a business to keep all of a consumer's prepayments if the consumer cancels, but offers no similar compensation if the business is the one to cancel the contract."
+          ]
+        }
+      ]
+    },
+    {
+      "category_name": "Data Privacy & Tracking",
+      "description": "These clauses detail how a company collects, uses, and shares your personal data.",
+      "clauses": [
+        {
+          "clause_name": "Vague Data Collection Policies",
+          "description": "Clauses that are intentionally broad or unclear about what specific data is collected and for what purposes, giving the company wide latitude.",
+          "examples": [
+            "A policy stating the company collects 'information you provide' and 'information we get from your use of our services,' without exhaustively detailing what that information is.",
+            "A term that says, 'We may collect and use technical data and related information, including but not limited to technical information about your device, system and application software, and peripherals.'",
+            "A clause indicating that the service 'collects information that your browser sends whenever you visit our site,' without specifying the exact data points (like IP address, browser type, pages visited, etc.)."
+          ]
+        },
+        {
+          "clause_name": "Third-Party Data Sharing",
+          "description": "These clauses grant the company permission to share, sell, or transfer your personal data to other companies, partners, or successors.",
+          "examples": [
+            "A term stating, 'We may share your information with our trusted partners for marketing purposes.'",
+            "A clause in the privacy policy that reads, 'In the event of a merger, acquisition, or sale of assets, your personal data may be transferred to a third party.'",
+            "A statement like, 'We may provide your personal information to security and credit checking organizations, some of which may be located in countries that do not provide the same level of data protection.'"
+          ]
+        },
+        {
+          "clause_name": "Location and Activity Tracking",
+          "description": "Clauses that allow the company to collect data on your physical location or your activity both on and off their service.",
+          "examples": [
+            "A clause in a mobile app's terms that says, 'By using this service, you consent to our collection of your device's location data to provide location-based services.'",
+            "A policy stating, 'We automatically collect information about your activity on our services, such as the pages you view, the time you spend on them, and the links you click.'",
+            "A term that allows the use of cookies and tracking pixels to 'understand your activity on other websites and to personalize ads for you.'"
+          ]
+        }
+      ]
+    }
+  ]
+}
