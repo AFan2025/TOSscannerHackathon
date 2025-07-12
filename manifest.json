@@ -1,15 +1,58 @@
 {
   "manifest_version": 3,
-  "name": "Side panel extension",
+  "name": "TOS Scanner",
   "version": "1.0",
-  "description": "Extension with a default side panel.",
+  "description": "Automatically scans and analyzes Terms of Service and Privacy Policy agreements",
+  
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs",
+    "sidePanel"
+  ],
+  
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TOS Scanner",
+    "default_icon": {
+      "16": "images/icon-16.png",
+      "48": "images/icon-48.png",
+      "128": "images/icon-128.png"
+    }
+  },
+  
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  
   "icons": {
     "16": "images/icon-16.png",
     "48": "images/icon-48.png",
     "128": "images/icon-128.png"
   },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
-  "permissions": ["sidePanel"]
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
