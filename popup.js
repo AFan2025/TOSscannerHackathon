@@ -2,7 +2,7 @@
 
 class TOSPopup {
     constructor() {
-        this.djangoBackendUrl = 'http://192.168.3.180:8080/api/analyze/'; // Update this to your Django backend URL
+        this.djangoBackendUrl = 'http://192.168.3.180:8080/api/analyze/'; 
         this.init();
     }
     
@@ -90,24 +90,41 @@ class TOSPopup {
             return;
         }
         
-        let html = `<div class="result-item found">Found ${scanResults.length} relevant link(s):</div>`;
+        let html = `
+            <div class="result-item found">
+                Found ${scanResults.length} relevant link(s):
+                <div class="selection-controls">
+                    <button id="select-all-btn" class="control-btn">Select All</button>
+                    <button id="analyze-selected-btn" class="control-btn" disabled>Analyze Selected</button>
+                </div>
+            </div>
+        `;
         
-        scanResults.forEach(link => {
+        scanResults.forEach((link, index) => {
             const emoji = link.type === 'tos' ? '📄' : '🔒';
             const typeLabel = link.type === 'tos' ? 'Terms of Service' : 'Privacy Policy';
             
             html += `
-                <div class="result-item found">
-                    ${emoji} <strong>${typeLabel}</strong><br>
-                    ${link.text}
-                    <a href="${link.url}" target="_blank" class="link-item">
-                        ${this.truncateUrl(link.url)}
-                    </a>
+                <div class="result-item found selectable-item" data-index="${index}">
+                    <label class="link-checkbox-container">
+                        <input type="checkbox" class="link-checkbox" data-url="${link.url}" data-text="${link.text}" data-type="${link.type}">
+                        <span class="checkmark"></span>
+                        <div class="link-content">
+                            ${emoji} <strong>${typeLabel}</strong><br>
+                            <span class="link-text">${link.text}</span>
+                            <a href="${link.url}" target="_blank" class="link-item" onclick="event.stopPropagation();">
+                                ${this.truncateUrl(link.url)}
+                            </a>
+                        </div>
+                    </label>
                 </div>
             `;
         });
         
         resultsContainer.innerHTML = html;
+        
+        // Set up event listeners for the new elements
+        this.setupSelectionEventListeners();
         
         // Store results for future reference
         this.storeResults(pageInfo.domain, { scanResults, pageInfo, timestamp: Date.now() });
@@ -128,7 +145,8 @@ class TOSPopup {
                 timestamp: new Date().toISOString()
             };
             
-            const response = await fetch(`${this.djangoBackendUrl}`, {
+            // const response = await fetch(`${this.djangoBackendUrl}/scan-results/`, {
+            const response = await fetch(`${this.djangoBackendUrl}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -214,7 +232,8 @@ class TOSPopup {
     // Get analysis results from backend
     async getAnalysisResults(domain) {
         try {
-            const response = await fetch(`${this.djangoBackendUrl}/analysis/${domain}/`, {
+            // const response = await fetch(`${this.djangoBackendUrl}/analysis/${domain}/`, {
+            const response = await fetch(`${this.djangoBackendUrl}/`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -227,6 +246,285 @@ class TOSPopup {
             console.error('Error fetching analysis results:', error);
         }
         return null;
+    }
+    
+    // Set up event listeners for selection controls
+    setupSelectionEventListeners() {
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const analyzeSelectedBtn = document.getElementById('analyze-selected-btn');
+        const checkboxes = document.querySelectorAll('.link-checkbox');
+        
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => cb.checked = !allChecked);
+                selectAllBtn.textContent = allChecked ? 'Select All' : 'Deselect All';
+                this.updateAnalyzeButton();
+            });
+        }
+        
+        if (analyzeSelectedBtn) {
+            analyzeSelectedBtn.addEventListener('click', () => {
+                this.analyzeSelectedLinks();
+            });
+        }
+        
+        // Add event listeners to checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateAnalyzeButton();
+                this.updateSelectAllButton();
+            });
+        });
+        
+        // Make the entire item clickable (except for the link)
+        const selectableItems = document.querySelectorAll('.selectable-item');
+        selectableItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'A') {
+                    const checkbox = item.querySelector('.link-checkbox');
+                    checkbox.checked = !checkbox.checked;
+                    this.updateAnalyzeButton();
+                    this.updateSelectAllButton();
+                }
+            });
+        });
+    }
+    
+    // Update the analyze button state based on selected checkboxes
+    updateAnalyzeButton() {
+        const analyzeBtn = document.getElementById('analyze-selected-btn');
+        const selectedCheckboxes = document.querySelectorAll('.link-checkbox:checked');
+        
+        if (analyzeBtn) {
+            analyzeBtn.disabled = selectedCheckboxes.length === 0;
+            analyzeBtn.textContent = selectedCheckboxes.length === 0 
+                ? 'Analyze Selected' 
+                : `Analyze ${selectedCheckboxes.length} Selected`;
+        }
+    }
+    
+    // Update the select all button text
+    updateSelectAllButton() {
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const checkboxes = document.querySelectorAll('.link-checkbox');
+        const checkedBoxes = document.querySelectorAll('.link-checkbox:checked');
+        
+        if (selectAllBtn) {
+            if (checkedBoxes.length === 0) {
+                selectAllBtn.textContent = 'Select All';
+            } else if (checkedBoxes.length === checkboxes.length) {
+                selectAllBtn.textContent = 'Deselect All';
+            } else {
+                selectAllBtn.textContent = 'Select All';
+            }
+        }
+    }
+    
+    // Analyze selected links
+    async analyzeSelectedLinks() {
+        const selectedCheckboxes = document.querySelectorAll('.link-checkbox:checked');
+        const analyzeBtn = document.getElementById('analyze-selected-btn');
+        const results = document.getElementById('results');
+        
+        if (selectedCheckboxes.length === 0) {
+            return;
+        }
+        
+        // Show loading state
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = 'Analyzing...';
+        
+        try {
+            // Show analysis progress
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'result-item found';
+            progressDiv.innerHTML = `
+                <div class="analysis-progress">
+                    <div class="spinner"></div>
+                    <span>Analyzing ${selectedCheckboxes.length} selected link(s)...</span>
+                </div>
+            `;
+            results.appendChild(progressDiv);
+            
+            const analysisResults = [];
+            
+            // Analyze each selected link
+            for (let i = 0; i < selectedCheckboxes.length; i++) {
+                const checkbox = selectedCheckboxes[i];
+                const linkUrl = checkbox.dataset.url;
+                const linkText = checkbox.dataset.text;
+                const linkType = checkbox.dataset.type;
+                
+                progressDiv.innerHTML = `
+                    <div class="analysis-progress">
+                        <div class="spinner"></div>
+                        <span>Analyzing ${i + 1} of ${selectedCheckboxes.length}: ${linkText}</span>
+                    </div>
+                `;
+                
+                try {
+                    // Fetch and analyze the TOS content
+                    const tosContent = await this.fetchToSContent(linkUrl);
+                    if (tosContent) {
+                        const analysis = await this.analyzeToSContent(tosContent);
+                        analysisResults.push({
+                            url: linkUrl,
+                            text: linkText,
+                            type: linkType,
+                            analysis: analysis
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error analyzing ${linkUrl}:`, error);
+                    analysisResults.push({
+                        url: linkUrl,
+                        text: linkText,
+                        type: linkType,
+                        error: error.message
+                    });
+                }
+            }
+            
+            // Remove progress indicator
+            progressDiv.remove();
+            
+            // Display analysis results
+            this.displayAnalysisResults(analysisResults);
+            
+        } catch (error) {
+            console.error('Error in analysis:', error);
+            results.innerHTML += `<div class="result-item warning">Analysis failed: ${error.message}</div>`;
+        } finally {
+            // Reset button state
+            analyzeBtn.disabled = false;
+            this.updateAnalyzeButton();
+        }
+    }
+    
+    // Fetch TOS content from URL
+    async fetchToSContent(url) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const html = await response.text();
+                
+                // Create a temporary DOM to extract text content
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Remove script and style elements
+                const scripts = doc.querySelectorAll('script, style');
+                scripts.forEach(el => el.remove());
+                
+                // Get text content
+                const textContent = doc.body.textContent || doc.body.innerText || '';
+                
+                // Limit content length (backend might have limits)
+                return textContent.substring(0, 50000); // First 50k characters
+            }
+        } catch (error) {
+            console.error('Error fetching TOS content:', error);
+        }
+        return null;
+    }
+    
+    // Send TOS content to backend for analysis
+    async analyzeToSContent(tosText) {
+        try {
+            const payload = {
+                tos_text: tosText
+            };
+            
+            const response = await fetch(`${this.djangoBackendUrl}/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Successfully analyzed with backend:', result);
+                return result;
+            } else {
+                throw new Error(`Backend responded with status: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error sending to backend:', error);
+            throw error;
+        }
+    }
+    
+    // Display analysis results
+    displayAnalysisResults(analysisResults) {
+        const results = document.getElementById('results');
+        
+        let analysisHtml = '<div class="result-item found"><strong>📊 Analysis Results:</strong></div>';
+        
+        analysisResults.forEach((result, index) => {
+            const emoji = result.type === 'tos' ? '📄' : '🔒';
+            
+            if (result.error) {
+                analysisHtml += `
+                    <div class="result-item warning">
+                        ${emoji} <strong>Error analyzing:</strong> ${result.text}<br>
+                        <small>${result.error}</small>
+                    </div>
+                `;
+            } else if (result.analysis) {
+                analysisHtml += `
+                    <div class="result-item found analysis-result">
+                        <div class="analysis-header">
+                            ${emoji} <strong>${result.text}</strong>
+                            <button class="toggle-analysis" data-index="${index}">Show Details</button>
+                        </div>
+                        <div class="analysis-content" style="display: none;">
+                            ${this.formatAnalysisResult(result.analysis)}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        results.innerHTML += analysisHtml;
+        
+        // Set up toggle buttons for analysis details
+        this.setupAnalysisToggle();
+    }
+    
+    // Format analysis result for display
+    formatAnalysisResult(analysis) {
+        let html = '';
+        
+        if (analysis.summary) {
+            html += `<div class="analysis-section"><strong>Summary:</strong><br>${analysis.summary}</div>`;
+        }
+        
+        if (analysis.key_clauses && Array.isArray(analysis.key_clauses)) {
+            html += '<div class="analysis-section"><strong>Key Clauses:</strong><ul>';
+            analysis.key_clauses.forEach(clause => {
+                html += `<li><strong>${clause.title}:</strong> ${clause.details}</li>`;
+            });
+            html += '</ul></div>';
+        }
+        
+        return html;
+    }
+    
+    // Set up toggle functionality for analysis results
+    setupAnalysisToggle() {
+        const toggleButtons = document.querySelectorAll('.toggle-analysis');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const analysisContent = button.closest('.analysis-result').querySelector('.analysis-content');
+                const isVisible = analysisContent.style.display !== 'none';
+                
+                analysisContent.style.display = isVisible ? 'none' : 'block';
+                button.textContent = isVisible ? 'Show Details' : 'Hide Details';
+            });
+        });
     }
 }
 
