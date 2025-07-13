@@ -407,6 +407,7 @@ class TOSPopup {
                         text: linkText,
                         type: linkType,
                         error: error.message
+                        // error: 'bruh' 
                     });
                 }
             }
