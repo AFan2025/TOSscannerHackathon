@@ -167,6 +167,29 @@ class TOSPopup {
         });
     }
     
+    // Store analysis results for specific links
+    storeAnalysisResults(domain, linkIndex, analysisData) {
+        chrome.storage.local.get([`scan_${domain}`], (result) => {
+            const cachedData = result[`scan_${domain}`] || {};
+            
+            // Initialize analysis results if not exists
+            if (!cachedData.analysisResults) {
+                cachedData.analysisResults = {};
+            }
+            
+            // Store the analysis result for this specific link
+            cachedData.analysisResults[linkIndex] = {
+                ...analysisData,
+                timestamp: Date.now()
+            };
+            
+            // Update the cached data
+            chrome.storage.local.set({
+                [`scan_${domain}`]: cachedData
+            });
+        });
+    }
+    
     // Load cached results if available
     async loadCachedResults() {
         try {
@@ -182,10 +205,77 @@ class TOSPopup {
                 const hourAgo = Date.now() - (60 * 60 * 1000);
                 if (cachedData.timestamp > hourAgo) {
                     await this.displayResults(cachedData.scanResults, cachedData.pageInfo);
+                    
+                    // Restore analysis results if they exist (with small delay to ensure UI is ready)
+                    if (cachedData.analysisResults) {
+                        console.log(`📁 Found cached analysis results for ${Object.keys(cachedData.analysisResults).length} links`);
+                        setTimeout(() => {
+                            this.restoreAnalysisResults(cachedData.analysisResults);
+                        }, 100);
+                    }
                 }
             }
         } catch (error) {
             console.error('Error loading cached results:', error);
+        }
+    }
+    
+    // Restore analysis results for previously analyzed links
+    async restoreAnalysisResults(analysisResults) {
+        console.log('🔄 Restoring analysis results from cache:', analysisResults);
+        
+        for (const [linkIndex, analysisData] of Object.entries(analysisResults)) {
+            // Check if analysis result is recent (less than 1 hour old)
+            const hourAgo = Date.now() - (60 * 60 * 1000);
+            if (analysisData.timestamp > hourAgo) {
+                console.log(`✅ Restoring analysis for link ${linkIndex}`);
+                
+                // Display the cached analysis result
+                this.displayIndividualAnalysisResult({
+                    url: analysisData.url,
+                    text: analysisData.text,
+                    type: analysisData.type,
+                    index: linkIndex,
+                    analysis: analysisData.analysis,
+                    error: analysisData.error,
+                    fromCache: true
+                });
+                
+                // Check the corresponding checkbox if it was previously analyzed
+                const checkbox = document.querySelector(`.link-checkbox[data-index="${linkIndex}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            }
+        }
+        
+        // Update the analyze button and select all button states
+        this.updateAnalyzeButton();
+        this.updateSelectAllButton();
+    }
+    
+    // Clear cached analysis results for current domain
+    async clearCachedAnalysisResults() {
+        try {
+            const tab = await this.getCurrentTab();
+            const url = new URL(tab.url);
+            const domain = url.hostname;
+            
+            const result = await chrome.storage.local.get([`scan_${domain}`]);
+            const cachedData = result[`scan_${domain}`];
+            
+            if (cachedData) {
+                // Remove analysis results but keep scan results
+                delete cachedData.analysisResults;
+                
+                chrome.storage.local.set({
+                    [`scan_${domain}`]: cachedData
+                });
+                
+                console.log(`🗑️ Cleared cached analysis results for domain: ${domain}`);
+            }
+        } catch (error) {
+            console.error('Error clearing cached analysis results:', error);
         }
     }
     
@@ -664,6 +754,9 @@ class TOSPopup {
         let html = '';
         const emoji = result.type === 'tos' ? '📄' : '🔒';
 
+        // Add cache indicator if result is from cache
+        const cacheIndicator = result.fromCache ? '<span style="font-size: 10px; opacity: 0.7; margin-left: 8px;">📁 Cached</span>' : '';
+        
         if (result.error) {
             html += `
                 <div class="result-item warning">
@@ -675,7 +768,7 @@ class TOSPopup {
             html += `
                 <div class="result-item found analysis-result">
                     <div class="analysis-header">
-                        ${emoji} <strong>Analysis Results</strong>
+                        ${emoji} <strong>Analysis Results</strong>${cacheIndicator}
                         <button class="toggle-analysis" data-link-index="${linkIndex}">Show Details</button>
                     </div>
                     <div class="analysis-content" style="display: none;">
@@ -687,7 +780,7 @@ class TOSPopup {
             html += `
                 <div class="result-item found analysis-result">
                     <div class="analysis-header">
-                        ${emoji} <strong>Analysis Results</strong>
+                        ${emoji} <strong>Analysis Results</strong>${cacheIndicator}
                         <button class="toggle-analysis" data-link-index="${linkIndex}">Show Details</button>
                     </div>
                     <div class="analysis-content" style="display: none;">
@@ -702,6 +795,31 @@ class TOSPopup {
 
         // Set up toggle buttons for this specific analysis result
         this.setupIndividualAnalysisToggle(linkIndex);
+        
+        // Store the analysis result for persistence across popup sessions
+        this.storeAnalysisResult(result);
+    }
+    
+    // Store analysis result for a specific link
+    async storeAnalysisResult(result) {
+        try {
+            const tab = await this.getCurrentTab();
+            const url = new URL(tab.url);
+            const domain = url.hostname;
+            
+            const analysisData = {
+                url: result.url,
+                text: result.text,
+                type: result.type,
+                analysis: result.analysis,
+                error: result.error
+            };
+            
+            console.log(`💾 Storing analysis result for link ${result.index} on domain ${domain}`);
+            this.storeAnalysisResults(domain, result.index, analysisData);
+        } catch (error) {
+            console.error('Error storing analysis result:', error);
+        }
     }
 
     // Show individual progress indicator for a specific link

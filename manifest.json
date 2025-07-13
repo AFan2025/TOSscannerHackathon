@@ -40,6 +40,16 @@
     "default_path": "sidepanel.html"
   },
   
+  "commands": {
+    "open-side-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Open TOS Scanner Side Panel"
+    }
+  },
+  
   "icons": {
     "16": "images/icon-16.svg",
     "48": "images/icon-16.svg",

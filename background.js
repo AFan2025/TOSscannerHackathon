@@ -12,6 +12,7 @@ class TOSBackground {
         chrome.runtime.onInstalled.addListener((details) => {
             console.log('TOS Scanner installed/updated');
             this.setupContextMenus();
+            this.setupKeyboardShortcuts();
         });
         
         // Listen for tab updates to auto-scan
@@ -25,6 +26,11 @@ class TOSBackground {
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             this.handleMessage(request, sender, sendResponse);
             return true; // Keep message channel open for async responses
+        });
+        
+        // Listen for action clicks to open side panel
+        chrome.action.onClicked.addListener((tab) => {
+            this.openSidePanel(tab);
         });
     }
     
@@ -41,6 +47,12 @@ class TOSBackground {
                 id: 'analyze-link',
                 title: 'Analyze this link with TOS Scanner',
                 contexts: ['link']
+            });
+            
+            chrome.contextMenus.create({
+                id: 'open-side-panel',
+                title: 'Open TOS Scanner Side Panel',
+                contexts: ['page']
             });
         });
         
@@ -112,6 +124,36 @@ class TOSBackground {
         } else if (info.menuItemId === 'analyze-link') {
             // Note: Analysis functionality removed - only scanning available
             console.log('Link analysis not currently available');
+        } else if (info.menuItemId === 'open-side-panel') {
+            // Open side panel
+            this.openSidePanel(tab);
+        }
+    }
+    
+    // Open side panel
+    async openSidePanel(tab) {
+        try {
+            await chrome.sidePanel.open({ tabId: tab.id });
+            console.log('Side panel opened for tab:', tab.id);
+        } catch (error) {
+            console.error('Error opening side panel:', error);
+        }
+    }
+    
+    // Setup keyboard shortcuts
+    setupKeyboardShortcuts() {
+        chrome.commands.onCommand.addListener((command) => {
+            this.handleCommand(command);
+        });
+    }
+    
+    // Handle keyboard commands
+    async handleCommand(command) {
+        if (command === 'open-side-panel') {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab) {
+                this.openSidePanel(tab);
+            }
         }
     }
     
