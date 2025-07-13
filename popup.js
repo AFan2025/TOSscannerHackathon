@@ -10,7 +10,7 @@ class TOSPopup {
         document.addEventListener('DOMContentLoaded', () => {
             this.setupEventListeners();
             this.loadCurrentSite();
-            // this.checkBackendConnection();
+            this.checkBackendConnection();
             this.loadCachedResults();
         });
     }
@@ -61,9 +61,6 @@ class TOSPopup {
             
             if (response && response.success) {
                 await this.displayResults(response.results, response.pageInfo);
-                
-                // Send results to Django backend for analysis
-                await this.sendToBackend(response.results, response.pageInfo);
             } else {
                 throw new Error('Failed to scan page');
             }
@@ -107,7 +104,7 @@ class TOSPopup {
             html += `
                 <div class="result-item found selectable-item" data-index="${index}">
                     <label class="link-checkbox-container">
-                        <input type="checkbox" class="link-checkbox" data-url="${link.url}" data-text="${link.text}" data-type="${link.type}">
+                        <input type="checkbox" class="link-checkbox" data-url="${link.url}" data-text="${link.text}" data-type="${link.type}" data-index="${index}">
                         <span class="checkmark"></span>
                         <div class="link-content">
                             ${emoji} <strong>${typeLabel}</strong><br>
@@ -117,6 +114,9 @@ class TOSPopup {
                             </a>
                         </div>
                     </label>
+                    <div class="analysis-result-container" id="analysis-result-${index}" style="display: none;">
+                        <!-- Analysis results will be displayed here -->
+                    </div>
                 </div>
             `;
         });
@@ -130,60 +130,26 @@ class TOSPopup {
         this.storeResults(pageInfo.domain, { scanResults, pageInfo, timestamp: Date.now() });
     }
     
-    // Send scan results to Django backend for analysis
-    async sendToBackend(scanResults, pageInfo) {
+
+    
+    // Check if Django backend is available
+    async checkBackendConnection() {
         try {
-            const payload = {
-                domain: pageInfo.domain,
-                url: pageInfo.url,
-                title: pageInfo.title,
-                links: scanResults.map(link => ({
-                    type: link.type,
-                    text: link.text,
-                    url: link.url
-                })),
-                timestamp: new Date().toISOString()
-            };
-            
-            // const response = await fetch(`${this.djangoBackendUrl}/scan-results/`, {
-            const response = await fetch(`${this.djangoBackendUrl}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
+            const response = await fetch(`${this.djangoBackendUrl}/health/`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
             });
             
             if (response.ok) {
-                console.log('Results sent to backend successfully');
                 this.updateBackendStatus('Connected ✅', 'found');
             } else {
-                throw new Error(`Backend responded with status: ${response.status}`);
+                throw new Error('Backend not responding');
             }
         } catch (error) {
-            console.error('Error sending to backend:', error);
-            this.updateBackendStatus('Connection failed ❌', 'warning');
+            this.updateBackendStatus('Disconnected ❌', 'warning');
+            console.log('Backend not available - results will be stored locally');
         }
     }
-    
-    // Check if Django backend is available
-    // async checkBackendConnection() {
-    //     try {
-    //         const response = await fetch(`${this.djangoBackendUrl}/health/`, {
-    //             method: 'GET',
-    //             headers: { 'Content-Type': 'application/json' }
-    //         });
-            
-    //         if (response.ok) {
-    //             this.updateBackendStatus('Connected ✅', 'found');
-    //         } else {
-    //             throw new Error('Backend not responding');
-    //         }
-    //     } catch (error) {
-    //         this.updateBackendStatus('Disconnected ❌', 'warning');
-    //         console.log('Backend not available - results will be stored locally');
-    //     }
-    // }
     
     // Update backend connection status in UI
     updateBackendStatus(message, type = '') {
@@ -348,85 +314,108 @@ class TOSPopup {
         analyzeBtn.textContent = 'Analyzing...';
         
         try {
-            // Show analysis progress
-            const progressDiv = document.createElement('div');
-            progressDiv.className = 'result-item found';
-            progressDiv.innerHTML = `
+            // Show main progress indicator near the top (after selection controls)
+            const selectionControls = document.querySelector('.selection-controls');
+            const mainProgressDiv = document.createElement('div');
+            mainProgressDiv.className = 'result-item found main-progress';
+            mainProgressDiv.innerHTML = `
                 <div class="analysis-progress">
                     <div class="spinner"></div>
-                    <span>Analyzing ${selectedCheckboxes.length} selected link(s)...</span>
+                    <span>Starting analysis of ${selectedCheckboxes.length} selected link(s)...</span>
                 </div>
             `;
-            results.appendChild(progressDiv);
             
-            const analysisResults = [];
+            // Insert after selection controls
+            if (selectionControls && selectionControls.parentElement) {
+                selectionControls.parentElement.insertAdjacentElement('afterend', mainProgressDiv);
+            } else {
+                results.insertBefore(mainProgressDiv, results.firstChild);
+            }
             
-            // Analyze each selected link
+            // Analyze each selected link and display results immediately
             for (let i = 0; i < selectedCheckboxes.length; i++) {
                 const checkbox = selectedCheckboxes[i];
                 const linkUrl = checkbox.dataset.url;
                 const linkText = checkbox.dataset.text;
                 const linkType = checkbox.dataset.type;
+                const linkIndex = checkbox.dataset.index;
                 
                 console.log(`🔄 Processing link ${i + 1}/${selectedCheckboxes.length}:`, linkUrl);
                 
-                progressDiv.innerHTML = `
+                // Update main progress
+                mainProgressDiv.innerHTML = `
                     <div class="analysis-progress">
                         <div class="spinner"></div>
                         <span>Analyzing ${i + 1} of ${selectedCheckboxes.length}: ${linkText}</span>
                     </div>
                 `;
                 
+                // Show individual progress
+                this.showIndividualProgress(linkIndex, linkText);
+                
                 try {
                     console.log(`📥 Fetching content for: ${linkText}`);
                     // Fetch and analyze the TOS content
-                    const tosContent = await this.fetchToSContent(linkUrl);
-                    if (tosContent) {
-                        console.log(`✅ Content fetched successfully, analyzing with backend...`);
-                        const analysis = await this.analyzeToSContent(tosContent);
-                        console.log(`🎉 Analysis completed for: ${linkText}`);
-                        analysisResults.push({
-                            url: linkUrl,
-                            text: linkText,
-                            type: linkType,
-                            analysis: analysis
-                        });
+                    const fetchResult = await this.fetchToSContent(linkUrl);
+                    
+                    if (fetchResult && fetchResult.success) {
+                        if (fetchResult.fromScrapeAndAnalyze) {
+                            // Result already includes analysis from scrape-and-analyze endpoint
+                            console.log(`🎉 Analysis completed via scrape-and-analyze for: ${linkText}`);
+                            this.displayIndividualAnalysisResult({
+                                url: linkUrl,
+                                text: linkText,
+                                type: linkType,
+                                index: linkIndex,
+                                analysis: fetchResult.analysis
+                            });
+                        } else {
+                            // Regular fetch succeeded, need to analyze separately
+                            console.log(`✅ Content fetched successfully, analyzing with backend...`);
+                            const analysis = await this.analyzeToSContent(fetchResult.content);
+                            console.log(`🎉 Analysis completed for: ${linkText}`);
+                            this.displayIndividualAnalysisResult({
+                                url: linkUrl,
+                                text: linkText,
+                                type: linkType,
+                                index: linkIndex,
+                                analysis: analysis
+                            });
+                        }
                     } else {
                         console.log(`❌ Failed to fetch content for: ${linkUrl}`);
-                        analysisResults.push({
+                        this.displayIndividualAnalysisResult({
                             url: linkUrl,
                             text: linkText,
                             type: linkType,
-                            error: 'Failed to fetch content'
+                            index: linkIndex,
+                            error: fetchResult?.error || 'Failed to fetch content'
                         });
                     }
                 } catch (error) {
                     console.error(`💥 Error analyzing ${linkUrl}:`, error);
-                    analysisResults.push({
+                    this.displayIndividualAnalysisResult({
                         url: linkUrl,
                         text: linkText,
                         type: linkType,
+                        index: linkIndex,
                         error: error.message
                     });
                 }
             }
             
-            // Remove progress indicator
-            progressDiv.remove();
+            // Remove main progress indicator
+            mainProgressDiv.remove();
             
             console.log(`🏁 Analysis completed for all ${selectedCheckboxes.length} links`);
-            console.log('📊 Analysis summary:', analysisResults.map(r => ({
-                url: r.url,
-                hasAnalysis: !!r.analysis,
-                hasError: !!r.error,
-                errorMessage: r.error
-            })));
-            
-            // Display analysis results
-            this.displayAnalysisResults(analysisResults);
             
         } catch (error) {
             console.error('💥 Error in analysis process:', error);
+            // Remove progress indicator if it exists
+            const mainProgressDiv = document.querySelector('.main-progress');
+            if (mainProgressDiv) {
+                mainProgressDiv.remove();
+            }
             results.innerHTML += `<div class="result-item warning">Analysis failed: ${error.message}</div>`;
         } finally {
             // Reset button state
@@ -465,6 +454,12 @@ class TOSPopup {
                 const textContent = doc.body.textContent || doc.body.innerText || '';
                 console.log(`📝 Extracted text content length: ${textContent.length} characters`);
                 
+                // Check if content is empty or too short
+                if (!textContent || textContent.trim().length < 100) {
+                    console.log(`⚠️ Content is empty or too short (${textContent.trim().length} chars), falling back to scrape-and-analyze`);
+                    return await this.fallbackToScrapeAndAnalyze(url);
+                }
+                
                 // Show first 500 characters for debugging
                 const preview = textContent.substring(0, 500).replace(/\s+/g, ' ').trim();
                 console.log(`📖 Content preview (first 500 chars): "${preview}..."`);
@@ -473,9 +468,11 @@ class TOSPopup {
                 const finalContent = textContent.substring(0, 50000);
                 console.log(`✂️ Final content length after truncation: ${finalContent.length} characters`);
                 
-                return finalContent;
+                return { success: true, content: finalContent };
             } else {
                 console.error(`❌ Failed to fetch ${url}. Status: ${response.status} ${response.statusText}`);
+                console.log(`🔄 Falling back to scrape-and-analyze due to fetch failure`);
+                return await this.fallbackToScrapeAndAnalyze(url);
             }
         } catch (error) {
             console.error('💥 Error fetching TOS content:', error);
@@ -484,10 +481,60 @@ class TOSPopup {
                 message: error.message,
                 stack: error.stack
             });
+            console.log(`🔄 Falling back to scrape-and-analyze due to error`);
+            return await this.fallbackToScrapeAndAnalyze(url);
         }
-        return null;
     }
-    
+
+    // Fallback to scrape-and-analyze endpoint
+    async fallbackToScrapeAndAnalyze(url) {
+        try {
+            console.log(`🔧 Using scrape-and-analyze fallback for: ${url}`);
+            
+            const payload = {
+                url: url,
+                headless: true,
+                timeout: 30000
+            };
+            
+            const response = await fetch(`${this.djangoBackendUrl}/scrape-and-analyze/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            console.log(`📡 Scrape-and-analyze response status: ${response.status} ${response.statusText}`);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Successfully scraped and analyzed with backend');
+                console.log('📊 Scrape-and-analyze result:', result);
+                
+                return {
+                    success: true,
+                    fromScrapeAndAnalyze: true,
+                    analysis: result.analysis,
+                    metadata: result.scraping_metadata
+                };
+            } else {
+                const errorText = await response.text();
+                console.error(`❌ Scrape-and-analyze error response: ${errorText}`);
+                return {
+                    success: false,
+                    error: `Scrape-and-analyze failed: ${response.status} ${response.statusText}`
+                };
+            }
+        } catch (error) {
+            console.error('💥 Error in scrape-and-analyze fallback:', error);
+            return {
+                success: false,
+                error: `Scrape-and-analyze fallback failed: ${error.message}`
+            };
+        }
+    }
+
     // Send TOS content to backend for analysis
     async analyzeToSContent(tosText) {
         try {
@@ -543,7 +590,7 @@ class TOSPopup {
             throw error;
         }
     }
-    
+
     // Display analysis results
     displayAnalysisResults(analysisResults) {
         console.log('🎨 Displaying analysis results in UI');
@@ -602,7 +649,82 @@ class TOSPopup {
         this.setupAnalysisToggle();
         console.log('🔧 Analysis toggle buttons setup complete');
     }
-    
+
+    // Display individual analysis result for a single link
+    displayIndividualAnalysisResult(result) {
+        const resultsContainer = document.getElementById('results');
+        const linkIndex = result.index;
+        const analysisResultContainer = document.getElementById(`analysis-result-${linkIndex}`);
+
+        if (!analysisResultContainer) {
+            console.warn(`Analysis result container for index ${linkIndex} not found.`);
+            return;
+        }
+
+        let html = '';
+        const emoji = result.type === 'tos' ? '📄' : '🔒';
+
+        if (result.error) {
+            html += `
+                <div class="result-item warning">
+                    ${emoji} <strong>Error analyzing:</strong> ${result.text}<br>
+                    <small>${result.error}</small>
+                </div>
+            `;
+        } else if (result.analysis) {
+            html += `
+                <div class="result-item found analysis-result">
+                    <div class="analysis-header">
+                        ${emoji} <strong>Analysis Results</strong>
+                        <button class="toggle-analysis" data-link-index="${linkIndex}">Show Details</button>
+                    </div>
+                    <div class="analysis-content" style="display: none;">
+                        ${this.formatAnalysisResult(result.analysis)}
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="result-item found analysis-result">
+                    <div class="analysis-header">
+                        ${emoji} <strong>Analysis Results</strong>
+                        <button class="toggle-analysis" data-link-index="${linkIndex}">Show Details</button>
+                    </div>
+                    <div class="analysis-content" style="display: none;">
+                        <p>No analysis available for this link.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        analysisResultContainer.innerHTML = html;
+        analysisResultContainer.style.display = 'block'; // Show the container
+
+        // Set up toggle buttons for this specific analysis result
+        this.setupIndividualAnalysisToggle(linkIndex);
+    }
+
+    // Show individual progress indicator for a specific link
+    showIndividualProgress(linkIndex, linkText) {
+        const analysisResultContainer = document.getElementById(`analysis-result-${linkIndex}`);
+        if (!analysisResultContainer) {
+            console.warn(`Analysis result container for index ${linkIndex} not found.`);
+            return;
+        }
+
+        const progressHtml = `
+            <div class="result-item found individual-progress">
+                <div class="analysis-progress">
+                    <div class="spinner"></div>
+                    <span>Analyzing: ${linkText}</span>
+                </div>
+            </div>
+        `;
+
+        analysisResultContainer.innerHTML = progressHtml;
+        analysisResultContainer.style.display = 'block';
+    }
+
     // Format analysis result for display
     formatAnalysisResult(analysis) {
         let html = '';
@@ -621,7 +743,7 @@ class TOSPopup {
         
         return html;
     }
-    
+
     // Set up toggle functionality for analysis results
     setupAnalysisToggle() {
         const toggleButtons = document.querySelectorAll('.toggle-analysis');
@@ -633,6 +755,27 @@ class TOSPopup {
                 analysisContent.style.display = isVisible ? 'none' : 'block';
                 button.textContent = isVisible ? 'Show Details' : 'Hide Details';
             });
+        });
+    }
+
+    // Set up toggle functionality for individual analysis results
+    setupIndividualAnalysisToggle(linkIndex) {
+        const analysisResultContainer = document.getElementById(`analysis-result-${linkIndex}`);
+        if (!analysisResultContainer) return;
+        
+        const toggleButton = analysisResultContainer.querySelector('.toggle-analysis');
+        if (!toggleButton) return;
+        
+        // Remove any existing event listeners to prevent duplicates
+        toggleButton.replaceWith(toggleButton.cloneNode(true));
+        const newToggleButton = analysisResultContainer.querySelector('.toggle-analysis');
+        
+        newToggleButton.addEventListener('click', () => {
+            const analysisContent = analysisResultContainer.querySelector('.analysis-content');
+            const isVisible = analysisContent.style.display !== 'none';
+            
+            analysisContent.style.display = isVisible ? 'none' : 'block';
+            newToggleButton.textContent = isVisible ? 'Show Details' : 'Hide Details';
         });
     }
 }

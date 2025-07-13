@@ -81,9 +81,6 @@ class TOSBackground {
                         chrome.action.setBadgeBackgroundColor({
                             color: '#4CAF50'
                         });
-                        
-                        // Send to backend for analysis
-                        await this.sendToBackendForAnalysis(response.results, response.pageInfo);
                     } else {
                         // Clear badge if no results
                         chrome.action.setBadgeText({
@@ -113,12 +110,8 @@ class TOSBackground {
                 console.error('Manual scan failed:', error);
             }
         } else if (info.menuItemId === 'analyze-link') {
-            // Analyze specific link
-            try {
-                await this.analyzeSpecificLink(info.linkUrl, tab);
-            } catch (error) {
-                console.error('Link analysis failed:', error);
-            }
+            // Note: Analysis functionality removed - only scanning available
+            console.log('Link analysis not currently available');
         }
     }
     
@@ -126,11 +119,6 @@ class TOSBackground {
     async handleMessage(request, sender, sendResponse) {
         try {
             switch (request.action) {
-                case 'sendToBackend':
-                    const backendResponse = await this.sendToBackendForAnalysis(request.data.results, request.data.pageInfo);
-                    sendResponse({ success: true, response: backendResponse });
-                    break;
-                    
                 case 'getStoredResults':
                     const results = await this.getStoredResults(request.domain);
                     sendResponse({ success: true, results: results });
@@ -152,79 +140,6 @@ class TOSBackground {
         } catch (error) {
             console.error('Error handling message:', error);
             sendResponse({ success: false, error: error.message });
-        }
-    }
-    
-    // Send results to Django backend for analysis
-    async sendToBackendForAnalysis(scanResults, pageInfo) {
-        try {
-            const payload = {
-                domain: pageInfo.domain,
-                url: pageInfo.url,
-                title: pageInfo.title,
-                links: scanResults.map(link => ({
-                    type: link.type,
-                    text: link.text,
-                    url: link.url
-                })),
-                timestamp: new Date().toISOString(),
-                user_agent: navigator.userAgent
-            };
-            
-            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Successfully sent to backend:', result);
-                return result;
-            } else {
-                throw new Error(`Backend responded with status: ${response.status}`);
-            }
-        } catch (error) {
-            console.error('Error sending to backend:', error);
-            throw error;
-        }
-    }
-    
-    // Analyze a specific link
-    async analyzeSpecificLink(linkUrl, tab) {
-        try {
-            const payload = {
-                url: linkUrl,
-                referrer: tab.url,
-                timestamp: new Date().toISOString()
-            };
-            
-            const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Link analysis result:', result);
-                
-                // Show notification with analysis result
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'images/icon-48.png',
-                    title: 'TOS Scanner Analysis',
-                    message: `Analysis complete for ${new URL(linkUrl).hostname}`
-                });
-                
-                return result;
-            }
-        } catch (error) {
-            console.error('Error analyzing link:', error);
         }
     }
     
@@ -273,43 +188,9 @@ class TOSBackground {
             console.error('Error clearing stored results:', error);
         }
     }
-    
-    // Batch send multiple scan results to backend
-    async batchSendToBackend() {
-        try {
-            const allData = await chrome.storage.local.get(null);
-            const scanData = Object.entries(allData)
-                .filter(([key, value]) => key.startsWith('scan_'))
-                .map(([key, value]) => value);
-            
-            if (scanData.length > 0) {
-                const response = await fetch(`${this.djangoBackendUrl}/analyze/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ scans: scanData })
-                });
-                
-                if (response.ok) {
-                    console.log('Batch data sent successfully');
-                }
-            }
-        } catch (error) {
-            console.error('Error in batch send:', error);
-        }
-    }
 }
 
 // Initialize the background script
 const tosBackground = new TOSBackground();
-
-// Set up periodic batch sending (every 30 minutes)
-chrome.alarms.create('batchSend', { periodInMinutes: 30 });
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'batchSend') {
-        tosBackground.batchSendToBackend();
-    }
-});
 
 console.log('TOS Scanner background script loaded');
