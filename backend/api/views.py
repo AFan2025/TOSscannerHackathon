@@ -46,14 +46,40 @@ class AnalyzeToSView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # 3. Define the system prompt for the LLM
+        # 3. Define the system prompt for the LLM - FOCUSED ON HARMFUL CLAUSES
         prompt = (
-            "You are an expert legal assistant specialized in analyzing Terms of Service agreements. "
-            "Analyze the following text. Your response MUST be a valid JSON object. "
-            "Provide a main 'summary' in simple, easy-to-understand language. "
-            "Then, create a list of 'key_clauses', where each item in the list is an object with a 'title' "
-            "for the clause type (e.g., 'Data Privacy', 'Content Ownership', 'Arbitration') and a 'details' "
-            "string explaining the user's rights and obligations for that clause. "
+            "You are a consumer rights advocate and expert legal assistant specialized in identifying harmful clauses in Terms of Service agreements. "
+            "Your primary task is to scan the following text for potentially harmful, unfair, or predatory clauses that could negatively impact users. "
+            "Your response MUST be a valid JSON object with the following structure:\n"
+            "{\n"
+            "  \"risk_level\": \"high|medium|low\",\n"
+            "  \"harmful_clauses_found\": [\n"
+            "    {\n"
+            "      \"category\": \"category_name\",\n"
+            "      \"title\": \"specific_clause_title\",\n"
+            "      \"severity\": \"high|medium|low\",\n"
+            "      \"description\": \"explanation of why this clause is harmful\",\n"
+            "      \"user_impact\": \"specific impact on user rights or finances\",\n"
+            "      \"clause_text\": \"exact text from the document\"\n"
+            "    }\n"
+            "  ],\n"
+            "  \"recommendations\": [\n"
+            "    \"specific advice for users about each harmful clause found\"\n"
+            "  ],\n"
+            "  \"overall_assessment\": \"brief summary of the document's overall fairness to users\"\n"
+            "}\n\n"
+            "Focus specifically on identifying these types of harmful clauses:\n"
+            "1. **Unilateral Contract Changes** - Company can change terms without proper notice\n"
+            "2. **Limitation of Liability** - Company avoids responsibility for damages, negligence, or caps liability to trivial amounts\n"
+            "3. **Mandatory Arbitration** - Prevents users from taking legal action in court\n"
+            "4. **Class Action Waivers** - Prevents users from joining group lawsuits\n"
+            "5. **Broad Content Licenses** - Company claims excessive rights to user content\n"
+            "6. **Automatic Renewals** - Locks users into payment without easy cancellation\n"
+            "7. **Unfair Payment Terms** - Requires payment even when services aren't provided\n"
+            "8. **Data Privacy Violations** - Vague or excessive data collection and sharing\n"
+            "9. **Location/Activity Tracking** - Invasive monitoring of user behavior\n\n"
+                             "If NO harmful clauses are found, return an empty array for harmful_clauses_found, set risk_level to 'low', and include a positive message in the overall_assessment along with a very brief summary of what the terms cover (e.g., 'Good news! No harmful clauses detected. This document appears to be a standard terms of service covering [brief description of main topics]').\n"
+                 "Be thorough but only flag clauses that are genuinely problematic for users.\n\n"
             "Here is the text to analyze:\n\n"
             f"{tos_text}"
         )
@@ -61,7 +87,7 @@ class AnalyzeToSView(APIView):
         # 4. Make the API call
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-pro",
+                model="gemini-2.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -72,7 +98,7 @@ class AnalyzeToSView(APIView):
             
             # 5. Process the response
             response_text = response.text
-            
+            print(response_text)
             # Check if response_text is None
             if not response_text:
                 return Response(
@@ -192,14 +218,40 @@ class ScrapeAndAnalyzeView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            # Define the system prompt for the LLM
+            # Define the system prompt for the LLM - FOCUSED ON HARMFUL CLAUSES
             prompt = (
-                "You are an expert legal assistant specialized in analyzing Terms of Service agreements. "
-                "Analyze the following scraped webpage text. Your response MUST be a valid JSON object. "
-                "Provide a main 'summary' in simple, easy-to-understand language. "
-                "Then, create a list of 'key_clauses', where each item in the list is an object with a 'title' "
-                "for the clause type (e.g., 'Data Privacy', 'Content Ownership', 'Arbitration') and a 'details' "
-                "string explaining the user's rights and obligations for that clause. "
+                "You are a consumer rights advocate and expert legal assistant specialized in identifying harmful clauses in Terms of Service agreements. "
+                "Your primary task is to scan the following scraped webpage text for potentially harmful, unfair, or predatory clauses that could negatively impact users. "
+                "Your response MUST be a valid JSON object with the following structure:\n"
+                "{\n"
+                "  \"risk_level\": \"high|medium|low\",\n"
+                "  \"harmful_clauses_found\": [\n"
+                "    {\n"
+                "      \"category\": \"category_name\",\n"
+                "      \"title\": \"specific_clause_title\",\n"
+                "      \"severity\": \"high|medium|low\",\n"
+                "      \"description\": \"explanation of why this clause is harmful\",\n"
+                "      \"user_impact\": \"specific impact on user rights or finances\",\n"
+                "      \"clause_text\": \"exact text from the document\"\n"
+                "    }\n"
+                "  ],\n"
+                "  \"recommendations\": [\n"
+                "    \"specific advice for users about each harmful clause found\"\n"
+                "  ],\n"
+                "  \"overall_assessment\": \"brief summary of the document's overall fairness to users\"\n"
+                "}\n\n"
+                "Focus specifically on identifying these types of harmful clauses:\n"
+                "1. **Unilateral Contract Changes** - Company can change terms without proper notice\n"
+                "2. **Limitation of Liability** - Company avoids responsibility for damages, negligence, or caps liability to trivial amounts\n"
+                "3. **Mandatory Arbitration** - Prevents users from taking legal action in court\n"
+                "4. **Class Action Waivers** - Prevents users from joining group lawsuits\n"
+                "5. **Broad Content Licenses** - Company claims excessive rights to user content\n"
+                "6. **Automatic Renewals** - Locks users into payment without easy cancellation\n"
+                "7. **Unfair Payment Terms** - Requires payment even when services aren't provided\n"
+                "8. **Data Privacy Violations** - Vague or excessive data collection and sharing\n"
+                "9. **Location/Activity Tracking** - Invasive monitoring of user behavior\n\n"
+                "If NO harmful clauses are found, return an empty array for harmful_clauses_found, set risk_level to 'low', and include a positive message in the overall_assessment along with a very brief summary of what the terms cover (e.g., 'Good news! No harmful clauses detected. This document appears to be a standard terms of service covering [brief description of main topics]').\n"
+                "Be thorough but only flag clauses that are genuinely problematic for users.\n\n"
                 "Here is the scraped text to analyze:\n\n"
                 f"{tos_text}"
             )
@@ -218,6 +270,8 @@ class ScrapeAndAnalyzeView(APIView):
                 
                 # Process the response
                 response_text = response.text
+
+                print(response_text)
                 
                 if not response_text:
                     return Response(

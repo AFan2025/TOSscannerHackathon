@@ -728,20 +728,108 @@ class TOSPopup {
     // Format analysis result for display
     formatAnalysisResult(analysis) {
         let html = '';
+        const uniqueId = `analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        if (analysis.summary) {
-            html += `<div class="analysis-section"><strong>Summary:</strong><br>${analysis.summary}</div>`;
+        // Always show overall assessment first
+        if (analysis.overall_assessment) {
+            html += `<div class="analysis-section"><strong>Overall Assessment:</strong><br>${analysis.overall_assessment}</div>`;
         }
         
-        if (analysis.key_clauses && Array.isArray(analysis.key_clauses)) {
-            html += '<div class="analysis-section"><strong>Key Clauses:</strong><ul>';
-            analysis.key_clauses.forEach(clause => {
-                html += `<li><strong>${clause.title}:</strong> ${clause.details}</li>`;
+        // Always show recommendations if available
+        if (analysis.recommendations && Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0) {
+            html += '<div class="analysis-section"><strong>💡 Recommendations:</strong><ul>';
+            analysis.recommendations.forEach(recommendation => {
+                html += `<li>${recommendation}</li>`;
             });
             html += '</ul></div>';
         }
         
+        // Add toggle button for detailed analysis
+        const hasDetailedInfo = (analysis.harmful_clauses_found && analysis.harmful_clauses_found.length > 0) || 
+                               analysis.risk_level || 
+                               analysis.summary || 
+                               (analysis.key_clauses && analysis.key_clauses.length > 0);
+        
+        if (hasDetailedInfo) {
+            html += `
+                <div class="analysis-section">
+                    <button class="toggle-detailed-analysis" 
+                            data-target="${uniqueId}" 
+                            style="background: rgba(255,255,255,0.2); border: none; border-radius: 4px; color: white; padding: 6px 12px; font-size: 12px; cursor: pointer; margin-top: 10px;">
+                        View Full Analysis
+                    </button>
+                </div>
+            `;
+            
+            // Detailed analysis content (initially hidden)
+            html += `<div id="${uniqueId}" class="detailed-analysis-content" style="display: none;">`;
+            
+            // Display risk level with appropriate styling
+            if (analysis.risk_level) {
+                const riskColor = this.getRiskColor(analysis.risk_level);
+                html += `<div class="analysis-section"><strong>Risk Level:</strong> <span style="color: ${riskColor}; font-weight: bold;">${analysis.risk_level.toUpperCase()}</span></div>`;
+            }
+            
+            // Display harmful clauses found
+            if (analysis.harmful_clauses_found && Array.isArray(analysis.harmful_clauses_found)) {
+                if (analysis.harmful_clauses_found.length > 0) {
+                    html += '<div class="analysis-section"><strong>⚠️ Harmful Clauses Found:</strong>';
+                    analysis.harmful_clauses_found.forEach(clause => {
+                        const severityColor = this.getSeverityColor(clause.severity);
+                        html += `
+                            <div style="margin: 10px 0; padding: 10px; border-left: 4px solid ${severityColor}; background: rgba(255,255,255,0.1);">
+                                <strong>${clause.title}</strong> 
+                                <span style="color: ${severityColor}; font-size: 12px;">[${clause.severity?.toUpperCase()}]</span>
+                                <br><strong>Category:</strong> ${clause.category}
+                                <br><strong>Impact:</strong> ${clause.user_impact}
+                                <br><strong>Why it's harmful:</strong> ${clause.description}
+                                ${clause.clause_text ? `<br><em>Clause text: "${clause.clause_text}"</em>` : ''}
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div class="analysis-section"><strong>✅ No Harmful Clauses Found</strong><br>This document appears to be fair to users.</div>';
+                }
+            }
+            
+            // Fallback to old format for backward compatibility
+            if (analysis.summary) {
+                html += `<div class="analysis-section"><strong>Summary:</strong><br>${analysis.summary}</div>`;
+            }
+            
+            if (analysis.key_clauses && Array.isArray(analysis.key_clauses)) {
+                html += '<div class="analysis-section"><strong>Key Clauses:</strong><ul>';
+                analysis.key_clauses.forEach(clause => {
+                    html += `<li><strong>${clause.title}:</strong> ${clause.details}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>'; // Close detailed-analysis-content
+        }
+        
         return html;
+    }
+    
+    // Get color for risk level
+    getRiskColor(riskLevel) {
+        switch (riskLevel?.toLowerCase()) {
+            case 'high': return '#e74c3c';
+            case 'medium': return '#f39c12';
+            case 'low': return '#27ae60';
+            default: return '#f39c12';
+        }
+    }
+    
+    // Get color for severity level
+    getSeverityColor(severity) {
+        switch (severity?.toLowerCase()) {
+            case 'high': return '#e74c3c';
+            case 'medium': return '#f39c12';
+            case 'low': return '#f1c40f';
+            default: return '#f39c12';
+        }
     }
 
     // Set up toggle functionality for analysis results
@@ -756,6 +844,36 @@ class TOSPopup {
                 button.textContent = isVisible ? 'Show Details' : 'Hide Details';
             });
         });
+        
+        // Set up toggle functionality for detailed analysis buttons
+        const detailedToggleButtons = document.querySelectorAll('.toggle-detailed-analysis');
+        detailedToggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-target');
+                const detailedContent = document.getElementById(targetId);
+                
+                if (detailedContent) {
+                    const isVisible = detailedContent.style.display !== 'none';
+                    detailedContent.style.display = isVisible ? 'none' : 'block';
+                    button.textContent = isVisible ? 'View Full Analysis' : 'Hide Full Analysis';
+                    
+                    // Add hover effect
+                    button.style.background = isVisible ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.3)';
+                }
+            });
+            
+            // Add hover effects
+            button.addEventListener('mouseenter', () => {
+                button.style.background = 'rgba(255,255,255,0.3)';
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                const targetId = button.getAttribute('data-target');
+                const detailedContent = document.getElementById(targetId);
+                const isVisible = detailedContent && detailedContent.style.display !== 'none';
+                button.style.background = isVisible ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)';
+            });
+        });
     }
 
     // Set up toggle functionality for individual analysis results
@@ -764,18 +882,55 @@ class TOSPopup {
         if (!analysisResultContainer) return;
         
         const toggleButton = analysisResultContainer.querySelector('.toggle-analysis');
-        if (!toggleButton) return;
-        
-        // Remove any existing event listeners to prevent duplicates
-        toggleButton.replaceWith(toggleButton.cloneNode(true));
-        const newToggleButton = analysisResultContainer.querySelector('.toggle-analysis');
-        
-        newToggleButton.addEventListener('click', () => {
-            const analysisContent = analysisResultContainer.querySelector('.analysis-content');
-            const isVisible = analysisContent.style.display !== 'none';
+        if (toggleButton) {
+            // Remove any existing event listeners to prevent duplicates
+            toggleButton.replaceWith(toggleButton.cloneNode(true));
+            const newToggleButton = analysisResultContainer.querySelector('.toggle-analysis');
             
-            analysisContent.style.display = isVisible ? 'none' : 'block';
-            newToggleButton.textContent = isVisible ? 'Show Details' : 'Hide Details';
+            newToggleButton.addEventListener('click', () => {
+                const analysisContent = analysisResultContainer.querySelector('.analysis-content');
+                const isVisible = analysisContent.style.display !== 'none';
+                
+                analysisContent.style.display = isVisible ? 'none' : 'block';
+                newToggleButton.textContent = isVisible ? 'Show Details' : 'Hide Details';
+            });
+        }
+        
+        // Set up toggle functionality for detailed analysis buttons
+        const detailedToggleButtons = analysisResultContainer.querySelectorAll('.toggle-detailed-analysis');
+        detailedToggleButtons.forEach(button => {
+            // Remove any existing event listeners to prevent duplicates
+            button.replaceWith(button.cloneNode(true));
+        });
+        
+        // Re-select after cloning
+        const newDetailedToggleButtons = analysisResultContainer.querySelectorAll('.toggle-detailed-analysis');
+        newDetailedToggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-target');
+                const detailedContent = document.getElementById(targetId);
+                
+                if (detailedContent) {
+                    const isVisible = detailedContent.style.display !== 'none';
+                    detailedContent.style.display = isVisible ? 'none' : 'block';
+                    button.textContent = isVisible ? 'View Full Analysis' : 'Hide Full Analysis';
+                    
+                    // Add hover effect
+                    button.style.background = isVisible ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.3)';
+                }
+            });
+            
+            // Add hover effects
+            button.addEventListener('mouseenter', () => {
+                button.style.background = 'rgba(255,255,255,0.3)';
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                const targetId = button.getAttribute('data-target');
+                const detailedContent = document.getElementById(targetId);
+                const isVisible = detailedContent && detailedContent.style.display !== 'none';
+                button.style.background = isVisible ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)';
+            });
         });
     }
 }
