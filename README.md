@@ -1,152 +1,77 @@
-# TOS Scanner Chrome Extension
-Team Alex, Caleb, Mohnish, Charles, Jacob for the Google AI Build Day v4.0 Hackathon
+# TOS Scanner Extension
 
-A Chrome extension that automatically scans websites for Terms of Service and Privacy Policy links, then sends them to a Django backend for analysis.
+A Chrome extension that scans and analyzes Terms of Service and Privacy Policy agreements to help users understand potentially harmful clauses.
 
-## 🚀 Quick Setup & Testing
+## Features
 
-### Step 1: Prepare Extension Files
+- **Automatic TOS Detection**: Scans web pages for Terms of Service and Privacy Policy links
+- **AI-Powered Analysis**: Uses a Django backend with AI to analyze TOS content for harmful clauses
+- **Multiple Interfaces**: 
+  - **Popup**: Quick access via extension icon
+  - **Side Panel**: Resizable, persistent workspace for detailed analysis
+- **Persistent Results**: Analysis results are cached and survive browser sessions
+- **Risk Assessment**: Categorizes clauses by severity (High, Medium, Low)
+- **Detailed Reporting**: Shows specific harmful clauses with explanations
 
-The extension is ready to run with these files:
-- `manifest.json` - Extension configuration
-- `popup.html` & `popup.js` - Main popup interface
-- `content.js` - Page scanning logic
-- `background.js` - Background processing
-- `sidepanel.html` & `sidepanel.js` - Advanced analytics panel
+## Side Panel Access
 
-### Step 2: Add Extension Icons (Optional but Recommended)
+The TOS Scanner provides multiple ways to access the side panel:
 
-Create simple icon files in the `images/` folder:
-- `icon-16.png` (16x16 pixels)
-- `icon-48.png` (48x48 pixels) 
-- `icon-128.png` (128x128 pixels)
+### Method 1: From Popup
+1. Click the extension icon in the toolbar
+2. Click the "📋 Open Side Panel" button
 
-You can use any simple icon for now, or the extension will use default Chrome icons.
+### Method 2: Right-Click Context Menu
+1. Right-click anywhere on a webpage
+2. Select "📋 Open TOS Scanner Side Panel"
 
-### Step 3: Load Extension in Chrome
+### Method 3: Keyboard Shortcut
+- **Windows/Linux**: `Ctrl + Shift + S`
+- **Mac**: `Cmd + Shift + S`
 
-1. **Open Chrome** and go to `chrome://extensions/`
+## Testing Side Panel Functionality
 
-2. **Enable Developer Mode** (toggle in top-right corner)
+To test if the side panel is working correctly:
 
-3. **Click "Load unpacked"**
+1. **Check Chrome Version**: Ensure you're using Chrome 114 or later
+2. **Open Developer Console**: 
+   - Right-click → Inspect → Console tab
+   - Look for side panel setup messages when the extension loads
+3. **Try Multiple Access Methods**: Test all three methods above
+4. **Check for Error Messages**: If side panel doesn't open, check console for helpful error messages
 
-4. **Select this folder** (`TOSscannerHackathon`)
-
-5. **The extension should appear** in your extensions list
-
-### Step 4: Test the Extension
-
-1. **Visit any website** (try `reddit.com`, `facebook.com`, `google.com`)
-
-2. **Click the extension icon** in the Chrome toolbar (puzzle piece icon if not pinned)
-
-3. **Click "Scan for TOS & Privacy Policies"**
-
-4. **See the results** - it should find relevant links!
-
-### Step 5: Test Different Features
-
-#### Popup Interface:
-- Shows current website
-- Manual scan button
-- Displays found TOS/Privacy links
-- Shows backend connection status
-
-#### Side Panel (optional):
-- Right-click on extension icon → "Open side panel"
-- View scan statistics and history
-- Export scan data
-- More advanced features
-
-#### Auto-scanning:
-- Extension automatically scans pages when you visit them
-- Look for badge numbers on the extension icon
-- Check scan history in the side panel
-
-## 🔧 Backend Integration (Optional for Testing)
-
-The extension works standalone but can connect to a Django backend. To test with backend:
-
-1. **Update backend URL** in these files:
-   - `popup.js` (line 4)
-   - `background.js` (line 6)
-   - `sidepanel.js` (line 4)
-
-2. **Change from**: `http://localhost:8000/api`
-3. **To your Django URL**: `http://your-django-server.com/api`
-
-## 🧪 Test Websites
-
-Try these websites to see the scanner in action:
-
-- **reddit.com** - Has clear privacy policy and user agreement
-- **facebook.com** - Multiple policy links
-- **twitter.com** - Terms of service in footer
-- **github.com** - Privacy and terms links
-- **amazon.com** - Various policy pages
-
-## 📊 What You Should See
-
-### Successful Scan Results:
+### Expected Console Messages
 ```
-Found 2 relevant link(s):
-📄 Terms of Service
-   User Agreement
-   https://reddit.com/user-agreement
-
-🔒 Privacy Policy  
-   Privacy Policy
-   https://reddit.com/privacy-policy
+✅ Side panel available via multiple access methods:
+  1. Right-click menu
+  2. Keyboard shortcut (Ctrl+Shift+S)
+  3. Button in popup
+Side panel options: {enabled: true, path: "sidepanel.html"}
 ```
 
-### Extension Features Working:
-- ✅ Badge shows number of found links
-- ✅ Popup displays scan results
-- ✅ Side panel shows statistics
-- ✅ Auto-scanning on page load
-- ✅ Local storage of results
+### Troubleshooting
+- **"Side panel API not available"**: Update Chrome to version 114+
+- **Permission errors**: Verify `sidePanel` permission in manifest.json
+- **Side panel won't open**: Try different access methods, check console errors
 
-## 🐛 Troubleshooting
+## Installation
 
-### Extension Not Loading:
-- Check that all files are in the same folder
-- Refresh the extensions page
-- Check Chrome console for errors
+1. Clone this repository
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked" and select the extension directory
+5. Test the side panel functionality using the methods above
 
-### No Scan Results:
-- Try different websites
-- Check browser console (F12) for errors
-- Some sites may block content scripts
+## Backend Setup
 
-### Backend Connection Issues:
-- Extension works without backend
-- Check CORS settings on Django server
-- Verify backend URL is correct
+The extension works with a Django backend for AI analysis. See `backend/README_SCRAPER.md` for setup instructions.
 
-## 🔄 Making Changes
+## File Structure
 
-After editing any files:
-1. Go to `chrome://extensions/`
-2. Click the refresh button on your extension
-3. Test the changes
-
-## 📝 Next Steps
-
-1. **Test thoroughly** on various websites
-2. **Add your Django backend** URLs
-3. **Customize the UI** styling
-4. **Add more scanning patterns** for different sites
-5. **Implement advanced analysis** features
-
-## 🎯 Sample Test Flow
-
-1. Load extension in Chrome
-2. Visit reddit.com
-3. Click extension icon
-4. Click "Scan for TOS & Privacy Policies"
-5. Should see: User Agreement and Privacy Policy links
-6. Open side panel to see scan history
-7. Visit another site and repeat
-
-The extension is ready to run and test immediately!
+```
+├── popup.html/js          # Main popup interface
+├── sidepanel.html/js      # Resizable side panel interface
+├── content.js             # Page scanning functionality
+├── background.js          # Extension coordination
+└── backend/               # Django AI analysis backend
+```
