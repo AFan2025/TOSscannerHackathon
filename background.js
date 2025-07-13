@@ -13,6 +13,7 @@ class TOSBackground {
             console.log('TOS Scanner installed/updated');
             this.setupContextMenus();
             this.setupKeyboardShortcuts();
+            this.setupSidePanel();
         });
         
         // Listen for tab updates to auto-scan
@@ -28,9 +29,10 @@ class TOSBackground {
             return true; // Keep message channel open for async responses
         });
         
-        // Listen for action clicks to open side panel
+        // Note: chrome.action.onClicked will NOT fire when default_popup is set in manifest
+        // We handle side panel opening through context menus and keyboard shortcuts instead
         chrome.action.onClicked.addListener((tab) => {
-            this.openSidePanel(tab);
+            console.log('Action clicked - this should not fire when popup is configured');
         });
     }
     
@@ -51,8 +53,8 @@ class TOSBackground {
             
             chrome.contextMenus.create({
                 id: 'open-side-panel',
-                title: 'Open TOS Scanner Side Panel',
-                contexts: ['page']
+                title: '📋 Open TOS Scanner Side Panel',
+                contexts: ['page', 'action']
             });
         });
         
@@ -130,13 +132,75 @@ class TOSBackground {
         }
     }
     
-    // Open side panel
+    // Open side panel with robust error handling
     async openSidePanel(tab) {
+        if (!tab || !tab.id) {
+            console.error('❌ Invalid tab provided to openSidePanel');
+            return false;
+        }
+        
         try {
+            // Method 1: Try opening for specific tab
             await chrome.sidePanel.open({ tabId: tab.id });
-            console.log('Side panel opened for tab:', tab.id);
+            console.log('✅ Side panel opened for tab:', tab.id);
+            return true;
+        } catch (tabError) {
+            console.log('⚠️ Failed to open side panel for tab, trying window:', tabError.message);
+            
+            try {
+                // Method 2: Try opening for window
+                await chrome.sidePanel.open({ windowId: tab.windowId });
+                console.log('✅ Side panel opened for window:', tab.windowId);
+                return true;
+            } catch (windowError) {
+                console.error('❌ Failed to open side panel for window:', windowError.message);
+                
+                // Method 3: Check if side panel is available and enabled
+                try {
+                    const options = await chrome.sidePanel.getOptions({ tabId: tab.id });
+                    console.log('Side panel options:', options);
+                    
+                    if (!options.enabled) {
+                        console.log('Side panel is disabled for this tab');
+                    }
+                } catch (optionsError) {
+                    console.error('Failed to get side panel options:', optionsError.message);
+                }
+                
+                // Method 4: Last resort - show user-friendly message
+                this.showSidePanelFallback(tab);
+                return false;
+            }
+        }
+    }
+    
+    // Fallback method when side panel fails to open
+    async showSidePanelFallback(tab) {
+        try {
+            // Try to show a notification or badge to guide the user
+            await chrome.action.setBadgeText({
+                tabId: tab.id,
+                text: '📋'
+            });
+            
+            await chrome.action.setBadgeBackgroundColor({
+                color: '#4CAF50'
+            });
+            
+            await chrome.action.setTitle({
+                tabId: tab.id,
+                title: 'Click to open TOS Scanner side panel'
+            });
+            
+            console.log('💡 Fallback: Set badge and title to guide user');
+            
+            // Clear the badge after a few seconds
+            setTimeout(() => {
+                chrome.action.setBadgeText({ tabId: tab.id, text: '' });
+            }, 5000);
+            
         } catch (error) {
-            console.error('Error opening side panel:', error);
+            console.error('Even fallback method failed:', error);
         }
     }
     
@@ -153,6 +217,47 @@ class TOSBackground {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab) {
                 this.openSidePanel(tab);
+            }
+        }
+    }
+    
+    // Setup side panel behavior
+    async setupSidePanel() {
+        try {
+            // Check if side panel API is available
+            if (!chrome.sidePanel) {
+                throw new Error('Side panel API not available (requires Chrome 114+)');
+            }
+            
+            // Note: We don't set openPanelOnActionClick to true because we have a popup configured
+            // Users can access the side panel via:
+            // 1. Right-click context menu -> "📋 Open TOS Scanner Side Panel"
+            // 2. Keyboard shortcut: Ctrl+Shift+S (Cmd+Shift+S on Mac)
+            // 3. From within the popup -> "📋 Open Side Panel" button
+            
+            console.log('✅ Side panel available via multiple access methods:');
+            console.log('  1. Right-click menu');
+            console.log('  2. Keyboard shortcut (Ctrl+Shift+S)');
+            console.log('  3. Button in popup');
+            
+            // Ensure the side panel is enabled globally
+            await chrome.sidePanel.setOptions({
+                enabled: true
+            });
+            
+            // Test if we can get options (this will throw if there are permission issues)
+            const options = await chrome.sidePanel.getOptions({});
+            console.log('Side panel options:', options);
+            
+        } catch (error) {
+            console.error('❌ Failed to configure side panel:', error);
+            
+            if (error.message.includes('Chrome 114')) {
+                console.log('💡 Solution: Update Chrome to version 114 or later');
+            } else if (error.message.includes('permission')) {
+                console.log('💡 Solution: Check that "sidePanel" permission is in manifest.json');
+            } else {
+                console.log('💡 Side panel features will be limited, but extension will still work');
             }
         }
     }
@@ -174,6 +279,15 @@ class TOSBackground {
                 case 'checkBackendHealth':
                     const health = await this.checkBackendHealth();
                     sendResponse({ success: true, healthy: health });
+                    break;
+                
+                case 'openSidePanel':
+                    const tab = { 
+                        id: request.tabId, 
+                        windowId: request.windowId 
+                    };
+                    const opened = await this.openSidePanel(tab);
+                    sendResponse({ success: opened });
                     break;
                     
                 default:

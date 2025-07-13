@@ -20,6 +20,11 @@ class TOSPopup {
         if (scanButton) {
             scanButton.addEventListener('click', () => this.performScan());
         }
+        
+        const sidePanelButton = document.getElementById('open-side-panel-btn');
+        if (sidePanelButton) {
+            sidePanelButton.addEventListener('click', () => this.openSidePanel());
+        }
     }
     
     // Get current tab information
@@ -276,6 +281,62 @@ class TOSPopup {
             }
         } catch (error) {
             console.error('Error clearing cached analysis results:', error);
+        }
+    }
+    
+    // Open side panel from popup
+    async openSidePanel() {
+        try {
+            const tab = await this.getCurrentTab();
+            
+            // Method 1: Try direct side panel API (available in Chrome 116+)
+            if (chrome.sidePanel && chrome.sidePanel.open) {
+                try {
+                    await chrome.sidePanel.open({ tabId: tab.id });
+                    console.log('✅ Side panel opened directly from popup');
+                    // Close the popup after opening side panel
+                    window.close();
+                    return;
+                } catch (directError) {
+                    console.log('Direct side panel open failed, trying background script:', directError.message);
+                }
+            }
+            
+            // Method 2: Send message to background script
+            const response = await chrome.runtime.sendMessage({
+                action: 'openSidePanel',
+                tabId: tab.id,
+                windowId: tab.windowId
+            });
+            
+            if (response && response.success) {
+                console.log('✅ Side panel opened via background script');
+                // Close the popup after opening side panel
+                window.close();
+            } else {
+                throw new Error('Background script failed to open side panel');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to open side panel:', error);
+            
+            // Show user-friendly error message
+            const button = document.getElementById('open-side-panel-btn');
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = '❌ Try right-click menu';
+                button.style.background = 'rgba(231, 76, 60, 0.3)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'rgba(255, 255, 255, 0.15)';
+                }, 3000);
+            }
+            
+            // Guide user to alternative methods
+            console.log('💡 Try these alternatives:');
+            console.log('1. Right-click on page → "Open TOS Scanner Side Panel"');
+            console.log('2. Use keyboard shortcut: Ctrl+Shift+S (Cmd+Shift+S on Mac)');
         }
     }
     
